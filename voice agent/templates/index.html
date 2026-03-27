@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="bg-blur-1"></div>
+    <div class="bg-blur-2"></div>
+
+    <div class="container">
+        <header>
+            <h1>🎙️ Voice AI</h1>
+            <button class="toggle-btn" onclick="toggleTheme()">🌗</button>
+        </header>
+
+        <div class="chat-box" id="chatBox">
+            <div class="msg ai">✨ Hello! Tap 'Speak' and I'll listen.</div>
+        </div>
+
+        <div class="listening-area" id="listeningArea">
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <span>Listening...</span>
+        </div>
+
+        <div class="btn-group">
+            <button id="micBtn" class="mic-btn" onclick="startListening()">
+                <span id="btnIcon">🎤</span>
+                <span id="btnText">Speak</span>
+            </button>
+            <button id="clearBtn" class="clear-btn" onclick="clearHistory()" title="Clear Chat">
+                <span>🧹</span>
+            </button>
+        </div>
+    </div>
+
+<script>
+    function startListening() {
+        const btn = document.getElementById("micBtn");
+        const btnText = document.getElementById("btnText");
+        const listeningArea = document.getElementById("listeningArea");
+        const chatBox = document.getElementById("chatBox");
+
+        // UI State: Recording
+        btn.classList.add("recording");
+        btn.disabled = true;
+        btnText.innerText = "Listening...";
+        listeningArea.classList.add("active");
+
+        fetch("/listen", { method: "POST" })
+            .then(res => res.json())
+            .then(data => {
+                if (data.user) appendMessage(data.user, 'user');
+                if (data.ai) {
+                    // Slight delay for the AI response to feel more natural
+                    setTimeout(() => appendMessage(data.ai, 'ai'), 600);
+                }
+            })
+            .catch(err => console.error("Error:", err))
+            .finally(() => {
+                btn.classList.remove("recording");
+                btn.disabled = false;
+                btnText.innerText = "Speak";
+                listeningArea.classList.remove("active");
+            });
+    }
+
+    function appendMessage(text, sender) {
+        const chatBox = document.getElementById("chatBox");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `msg ${sender} animate-in`;
+        msgDiv.innerHTML = sender === 'user' ? `🧑 ${text}` : `🤖 ${text}`;
+        chatBox.appendChild(msgDiv);
+        
+        // Auto-scroll with smooth animation
+        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+    }
+
+    function clearHistory() {
+        fetch("/clear_history", { method: "POST" })
+            .then(() => {
+                const chatBox = document.getElementById("chatBox");
+                chatBox.innerHTML = `<div class="msg ai animate-in">🧹 History cleared. Ready for a new chat!</div>`;
+            });
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle("light");
+    }
+
+    // Load conversation history on page load
+    window.onload = () => {
+        fetch("/history")
+            .then(res => res.json())
+            .then(history => {
+                history.forEach(h => {
+                    appendMessage(h.user, 'user');
+                    appendMessage(h.ai, 'ai');
+                });
+            });
+    };
+</script>
+
+</body>
+</html>
